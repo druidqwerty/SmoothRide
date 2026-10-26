@@ -1,0 +1,11 @@
+name=SmoothRide MP [B42]
+id=SmoothRide
+author=druid
+description=Smooth multiplayer vehicles. Remote cars are drawn ~60-100 ms behind instead of 500+ ms, follow a curve built from the driver's speed instead of straight segments, and never pop: prediction misses are blended out. The driver sends its car state ~30 times a second instead of ~6. Client-side Java (ZombieBuddy); every player needs it. If the game build does not match, it switches itself off and vanilla sync is used.
+require=\ZombieBuddy
+category=vehicle
+versionMin=42.21
+modversion=1.0.0
+javaJarFile=media/java/SmoothRide.jar
+javaPkgName=com.druid.smoothride
+ZBVersionMin=2.3.4

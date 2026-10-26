@@ -78,6 +78,10 @@ JDK=/path/to/jdk-25/bin GAME=/path/to/ProjectZomboid tools/build.sh
 
 The script builds `build/SmoothRide.jar`, assembles the mod folder in `dist/SmoothRide/` and runs the offline simulator (`test/`).
 
+## My mods
+- **SmoothRide MP** — smooth multiplayer vehicles (this mod).
+- [ZombieSync MP](https://steamcommunity.com/sharedfiles/filedetails/?id=3827946115) — smooth multiplayer zombies.
+
 ## License
 MIT License — see LICENSE file.
 

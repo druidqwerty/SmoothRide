@@ -1,5 +1,7 @@
 # SmoothRide MP
 
+<p align="center"><img src="docs/preview.png" alt="SmoothRide MP" width="320"></p>
+
 **Smooth multiplayer vehicles for Project Zomboid (Build 42.21+)**
 
 Remote vehicles are drawn with ~60-100 ms delay instead of 500+ ms. They follow smooth curves based on the driver's speed instead of straight-line segments and never pop in. Prediction errors are blended smoothly.

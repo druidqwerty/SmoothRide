@@ -9,7 +9,7 @@ Remote vehicles are drawn with ~60-100 ms delay instead of 500+ ms. They follow 
 The driver sends car state ~30 times per second instead of ~6. Client-side Java mod (requires ZombieBuddy). Every player must have it. If the game build does not match, it disables itself and falls back to vanilla sync.
 
 ## Features
-- Low-latency remote vehicle rendering (~50-100 ms instead of 500+ ms)
+- Low-latency remote vehicle rendering (~60-100 ms instead of 500+ ms)
 - Smooth interpolation using speed-based curves
 - Blended error correction (no sudden jumps)
 - High-frequency state updates from driver (30 Hz)
@@ -19,7 +19,7 @@ The driver sends car state ~30 times per second instead of ~6. Client-side Java 
 ## Installation
 **Required on every client and in server mod list.**
 
-1. Install **ZombieBuddy** (if you use BetterVehicleDynamics, RealVehicleInteriors etc. you probably already have it).
+1. Install **ZombieBuddy** 2.3.4+ (if you use BetterVehicleDynamics, RealVehicleInteriors etc. you probably already have it).
 2. Download `SmoothRide_1.0.0.zip` from [Releases](https://github.com/druidqwerty/SmoothRide/releases) and unpack the `SmoothRide` folder into your mods directory:
    - `%UserProfile%\Zomboid\mods\SmoothRide\`
    - You should see `... \mods\SmoothRide\42\mod.info` and `... \42\media\java\SmoothRide.jar`
@@ -59,6 +59,11 @@ Local server + two clients (driver and passenger-observer), 145 FPS:
 | jerkiness: p99 acceleration of the drawn car (real car: 28 m/s²) | 4155 m/s² | 81 m/s² |
 | driver updates sent | 6.7/s | 30/s |
 | pops | 2 | 0 |
+
+## Please note
+- This mod was made 100% with AI.
+- It was made only for playing with a friend.
+- Tested only on a dedicated server. Not tested on a server hosted from the game menu.
 
 ## Building from Source
 Requires Java 25+ and the game + ZombieBuddy jars.

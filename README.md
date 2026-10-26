@@ -8,6 +8,10 @@ Remote vehicles are drawn with ~60-100 ms delay instead of 500+ ms. They follow 
 
 The driver sends car state ~30 times per second instead of ~6. Client-side Java mod (requires ZombieBuddy). Every player must have it. If the game build does not match, it disables itself and falls back to vanilla sync.
 
+<p align="center"><a href="https://boosty.to/lrgpp"><img src="docs/banner.png" alt="LrgPP mods on Boosty" width="640"></a></p>
+
+Free and open source. Almost all of the code is written by an AI; the subscription, the testing and the time are mine. If the mod made your game better: [support on Boosty](https://boosty.to/lrgpp).
+
 ## Features
 - Low-latency remote vehicle rendering (~60-100 ms instead of 500+ ms)
 - Smooth interpolation using speed-based curves

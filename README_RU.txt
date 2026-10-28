@@ -68,6 +68,8 @@ SmoothRide MP 1.1.0: плавные машины в мультиплеере Pro
 - Wandering Hordes Save Trim: без подвисаний сервера при сохранении из-за карты стен
   Wandering Hordes.
   https://steamcommunity.com/sharedfiles/filedetails/?id=3829140377
+- Host Unstuck: лечит и ускоряет загрузку мастерской при запуске своего сервера.
+  https://steamcommunity.com/sharedfiles/filedetails/?id=3829163351
 
 Важно
 - Код написан нейросетью, не человеком.

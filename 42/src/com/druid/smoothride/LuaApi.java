@@ -2,11 +2,16 @@ package com.druid.smoothride;
 
 import se.krka.kahlua.integration.annotations.LuaMethod;
 
-/** Console helpers: SmoothRide_status(), SmoothRide_set("mode", "smooth"). */
+/** Lua side: SmoothRide_status(), SmoothRide_get("mode"), SmoothRide_set("mode", "smooth"); the in-game options use get/set. */
 public class LuaApi {
     @LuaMethod(name = "SmoothRide_status", global = true)
     public static String status() {
         return Engine.status();
+    }
+
+    @LuaMethod(name = "SmoothRide_get", global = true)
+    public static String get(String key) {
+        return key == null ? null : Config.get(key);
     }
 
     @LuaMethod(name = "SmoothRide_set", global = true)

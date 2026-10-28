@@ -66,9 +66,19 @@ final class Track {
     private final float[] cq = {0f, 0f, 0f, 1f};
 
     // stats since the last report
-    int stFrames, stInterp, stExtrap, stHold, stCorr, stSnap, stSamples, stTeleport, stDropped, stIdle;
-    double stMaxCorr, stSumDelay, stMaxDelay;
+    int stFrames, stInterp, stExtrap, stHold, stCorr, stSnap, stSamples, stTeleport, stDropped, stIdle, stGaps, stStale, stLongGaps;
+    double stMaxCorr, stSumDelay, stMaxDelay, stGapMax, stPredMax;
     long stStart = -1;
+
+    // a burst of late samples right after a silence (server hitch backlog)
+    private double burstUntil = Double.NEGATIVE_INFINITY;
+    private double burstRef;
+
+    /** After the prediction limit a moving car coasts to a stop over about this long instead of freezing. */
+    static final double STOP_TAIL_MS = 400.0;
+    static final double MIN_SPRING_W = 1.2;   // 1/s: even a big offset is gone within ~4 s
+    static final double MOVING_IDLE_MS = 10000.0; // a car that was moving is held this long before vanilla takes over
+    static final double MAX_ROT_BLEND = 1.2;  // rad/s for blending out a rotation error
 
     short vehicleId = -1;
 
@@ -95,6 +105,7 @@ final class Track {
         }
         n = 0;
         newestT = Long.MIN_VALUE;
+        holdFrom = null;
         hasRaw = false;
         mMode = -1;
         zeroCorrection();
@@ -120,16 +131,50 @@ final class Track {
         Sample last = s[n - 1];
         long dt = in.t - last.t;
         double d = dist(last, in);
-        if (d > Config.teleportDistance && (dt <= 0L || d * 1000.0 / dt > 70.0)) {
-            clear(); // teleport: show the new place at once
+        // (an older snapshot arriving late is history, not a teleport: insertSorted places it)
+        boolean teleport = d > Config.teleportDistance && (dt == 0L || (dt > 0L && d * 1000.0 / dt > 70.0));
+        if (!teleport && dt >= 0L && dt <= 500L) {
+            // a rotation-only jump (a flipped car righted in place with setAngles) is a teleport too
+            q2[0] = last.qx; q2[1] = last.qy; q2[2] = last.qz; q2[3] = last.qw;
+            q3[0] = in.qx; q3[1] = in.qy; q3[2] = in.qz; q3[3] = in.qw;
+            normalize(q2);
+            normalize(q3);
+            teleport = angleBetween(q2, q3) > Math.max(Math.toRadians(60.0), 8.0 * dt / 1000.0);
+        }
+        if (teleport) {
+            clear(); // show the new place at once
             stTeleport++;
             return false;
         }
-        if (dt > 1000L) {
-            clear(); // the stream stopped and resumed: old snapshots describe a different ride
+        if (idle) {
+            clear(); // vanilla had the car (parked): start again from where it is drawn
             return true;
         }
+        if (dt > bridgeMs()) {
+            // the stream stopped for longer than prediction bridges: the old snapshots describe
+            // another stretch of road. Drop them but keep the drawn pose and the correction, so the
+            // car (stopped at the end of its prediction) catches up in one smooth move.
+            dropSamples();
+            stLongGaps++;
+            return false;
+        }
         return false;
+    }
+
+    /** Empties the buffer but keeps the drawn pose and the correction, so the next frame blends into the new data. */
+    private void dropSamples() {
+        for (int i = 0; i < n; i++) {
+            pool.add(s[i]);
+            s[i] = null;
+        }
+        n = 0;
+        newestT = Long.MIN_VALUE;
+        holdFrom = null;
+    }
+
+    /** Longest stamp gap that prediction bridges without resetting the buffer. */
+    static double bridgeMs() {
+        return Math.max(1000.0, Config.maxPredictMs + STOP_TAIL_MS + 500.0);
     }
 
     /** Takes ownership of {@code in} (it must come from {@link #obtain()}). */
@@ -140,8 +185,26 @@ final class Track {
             return false;
         }
         in.arrive = now;
+        holdFrom = null;
         if (!in.synthetic) {
-            pushLat(now - in.t);
+            double late = now - in.t;
+            if (!Double.isNaN(lastArrive)) {
+                double silence = now - lastArrive;
+                double g = gapN >= 4 ? percentile(gap, gapN, 0.5) : 50.0;
+                if (silence > Math.max(250.0, 4.0 * g)) {
+                    // nothing arrived for a while (server hitch): what comes now may be the backlog
+                    // the server relays at once; its lateness is the hitch, not the link
+                    stGaps++;
+                    if (silence > stGapMax) stGapMax = silence;
+                    burstUntil = now + 60.0;
+                    burstRef = latN >= 4 ? percentile(lat, latN, 0.9) : late;
+                }
+            }
+            if (now <= burstUntil && late > burstRef + 40.0) {
+                stStale++; // keeps the delay from growing for seconds after one hitch
+            } else {
+                pushLat(late);
+            }
             if (newestT != Long.MIN_VALUE && in.t > newestT && in.t - newestT < 1000L) {
                 pushGap(in.t - newestT);
             }
@@ -313,7 +376,8 @@ final class Track {
             double lx = a.x + (b.x - a.x) * u;
             double ly = a.y + (b.y - a.y) * u;
             double lz = a.z + (b.z - a.z) * u;
-            boolean sane = h > 0.0 && h < 1.0 && speed(avx, avy, avz) < 120f && speed(bvx, bvy, bvz) < 120f;
+            // spans up to 3 s: the gap a server hitch leaves between the last snapshot before it and the first after
+            boolean sane = h > 0.0 && h < 3.0 && speed(avx, avy, avz) < 120f && speed(bvx, bvy, bvz) < 120f;
             double hx = lx, hy = ly, hz = lz, hdx = 0, hdy = 0, hdz = 0;
             if (sane) {
                 double h00 = 2 * u3 - 3 * u2 + 1, h10 = u3 - 2 * u2 + u, h01 = -2 * u3 + 3 * u2, h11 = u3 - u2;
@@ -321,7 +385,8 @@ final class Track {
                 hy = h00 * a.y + h10 * h * avy + h01 * b.y + h11 * h * bvy;
                 hz = h00 * a.z + h10 * h * avz + h01 * b.z + h11 * h * bvz;
                 double ddx = hx - lx, ddy = hy - ly, ddz = hz - lz;
-                if (Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz) > Config.hermiteMaxDeviation) {
+                double chord = Math.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y) + (b.z - a.z) * (b.z - a.z));
+                if (Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz) > Math.max(Config.hermiteMaxDeviation, 0.1 * chord)) {
                     sane = false;
                 } else {
                     double d00 = 6 * u2 - 6 * u, d10 = 3 * u2 - 4 * u + 1, d01 = -6 * u2 + 6 * u, d11 = 3 * u2 - 2 * u;
@@ -359,10 +424,16 @@ final class Track {
         } else {
             a = s[ia];
             double ex = r - a.t;
-            boolean hold = ex > Config.maxExtrapolationMs;
+            double end = Config.maxPredictMs + STOP_TAIL_MS;
+            boolean hold = ex > end;
             if (hold) {
-                ex = Config.maxExtrapolationMs;
-                if (!Double.isNaN(lastArrive) && now - lastArrive > Config.idleTimeoutMs) {
+                ex = end;
+                // a parked car goes back to vanilla after idleTimeoutMs; one that was moving when the
+                // packets stopped (server hitch) stays held where its prediction ended, so it can catch
+                // up smoothly when they come back
+                boolean parked = Math.abs(a.vx) + Math.abs(a.vz) < 1.0f;
+                double timeout = parked ? Math.max(Config.idleTimeoutMs, end) : Math.max(Config.idleTimeoutMs, MOVING_IDLE_MS);
+                if (!Double.isNaN(lastArrive) && now - lastArrive > timeout) {
                     // nothing new for a long time: parked, or ownership moved; vanilla takes over
                     if (!idle) stIdle++;
                     idle = true;
@@ -373,61 +444,52 @@ final class Track {
                     return NONE;
                 }
             }
-            float e = (float) (ex / 1000.0);
-            float wvx = a.vx, wvy = a.vz, wvz = a.vy;
-            px = a.x + wvx * e;
-            py = a.y + wvy * e;
-            float rise = wvz * e;
-            if (rise > 0.3f) rise = 0.3f;
-            if (rise < -0.3f) rise = -0.3f;
-            pz = a.z + rise;
+            if (ex > stPredMax) stPredMax = ex;
+            if (hold && holdFrom == a) {
+                System.arraycopy(holdPred, 0, pred, 0, 6); // the end of the prediction does not change while held
+                System.arraycopy(holdQ, 0, q1, 0, 4);
+            } else {
+                predict(ia, ex);
+                if (hold) {
+                    holdFrom = a;
+                    System.arraycopy(pred, 0, holdPred, 0, 6);
+                    System.arraycopy(q1, 0, holdQ, 0, 4);
+                }
+            }
+            px = (float) pred[0]; py = (float) pred[1]; pz = (float) pred[2];
             if (hold) {
                 dx = dy = dz = 0f;
             } else {
-                dx = wvx; dy = wvy; dz = wvz;
+                dx = (float) pred[3]; dy = (float) pred[4]; dz = (float) pred[5];
             }
-            vx = a.vx; vy = a.vy; vz = a.vz;
-            q1[0] = a.qx; q1[1] = a.qy; q1[2] = a.qz; q1[3] = a.qw;
-            normalize(q1);
-            if (ia >= 1) {
-                Sample p = s[ia - 1];
-                long pdt = a.t - p.t;
-                if (pdt >= 5L && pdt <= 500L) {
-                    q2[0] = p.qx; q2[1] = p.qy; q2[2] = p.qz; q2[3] = p.qw;
-                    normalize(q2);
-                    conj(q2, q3);
-                    mul(q1, q3, q3); // rotation that took the car from p to a (world frame)
-                    if (q3[3] < 0f) { q3[0] = -q3[0]; q3[1] = -q3[1]; q3[2] = -q3[2]; q3[3] = -q3[3]; }
-                    float w = Math.min(1f, q3[3]);
-                    float ang = 2f * (float) Math.acos(w);
-                    float sinHalf = (float) Math.sqrt(Math.max(0f, 1f - w * w));
-                    if (ang > 1.0e-4f && sinHalf > 1.0e-6f) {
-                        float rate = ang / (pdt / 1000f);
-                        float extAng = Math.min(rate * e, 0.5f);
-                        float ax = q3[0] / sinHalf, ay = q3[1] / sinHalf, az = q3[2] / sinHalf;
-                        float sh = (float) Math.sin(extAng * 0.5f), ch = (float) Math.cos(extAng * 0.5f);
-                        q2[0] = ax * sh; q2[1] = ay * sh; q2[2] = az * sh; q2[3] = ch;
-                        mul(q2, q1, q1);
-                        normalize(q1);
-                    }
-                }
-            }
+            vx = dx; vy = dz; vz = dy; // the game's buffer holds Bullet-space velocity (x, up, z)
             eng = a.eng;
             thr = a.thr;
             mode = hold ? M_HOLD : M_EXTRAP;
             nA = a.t;
         }
 
-        // 1) advance the correction spring (critically damped, so it never overshoots back)
+        // 1) advance the correction spring (critically damped, so it never overshoots back). A big
+        //    offset (after a server hitch) closes no faster than a fraction of the car's speed, so it
+        //    reads as the car speeding up or slowing down a little, not as a jump.
         double w0 = 2000.0 / Config.correctionTimeMs; // 1/s
         double dts = dtFrame / 1000.0;
         if (dts > 0.0) {
+            double off = Math.sqrt(cx * cx + cy * cy + cz * cz);
+            if (off > 0.05) {
+                double vMax = Config.blendSpeedFrac * Math.sqrt(dx * dx + dy * dy) + Config.blendSpeedMin;
+                // peak speed of a critically damped spring released from rest at x0 is x0 * w / e
+                w0 = Math.max(MIN_SPRING_W, Math.min(w0, Math.E * vMax / off));
+            }
             double ex = Math.exp(-w0 * dts);
             float[] st = springStep(cx, cvx, w0, dts, ex); cx = st[0]; cvx = st[1];
             st = springStep(cy, cvy, w0, dts, ex); cy = st[0]; cvy = st[1];
             st = springStep(cz, cvz, w0, dts, ex); cz = st[0]; cvz = st[1];
             q2[0] = 0f; q2[1] = 0f; q2[2] = 0f; q2[3] = 1f;
-            slerp(cq, q2, (float) (1.0 - Math.exp(-dts * 1000.0 / Config.correctionTimeMs)), cq);
+            float k = (float) (1.0 - Math.exp(-dts * w0 * 0.5));
+            float ang = angleBetween(cq, q2);
+            if (ang > 1.0e-4f) k = Math.min(k, (float) (MAX_ROT_BLEND * dts / ang)); // at most ~70 deg/s
+            slerp(cq, q2, Math.min(1f, k), cq);
         }
 
         // 2) if the curve under the car changed (not just the next snapshot), fold the jump in
@@ -471,7 +533,7 @@ final class Track {
             }
         }
         float cl = (float) Math.sqrt(cx * cx + cy * cy + cz * cz);
-        if (cl > 3.0f) {
+        if (cl > Config.snapDistance) {
             zeroCorrection();
             stSnap++;
             cl = 0f;
@@ -537,6 +599,125 @@ final class Track {
         return OK;
     }
 
+    // ---- prediction (dead reckoning) past the newest snapshot ----
+
+    static final double TURN_HOLD_S = 0.6;   // the measured turn rate is kept this long...
+    static final double TURN_FADE_S = 0.9;   // ...then fades with this time constant (a swerve is not a circle)
+    static final double ACC_FADE_S = 0.35;   // the measured acceleration fades with this time constant
+    static final double MAX_TURN_RATE = 2.5; // rad/s
+    static final double MAX_TURN = Math.PI / 2;
+    static final double MAX_ACC = 10.0;      // m/s^2
+    static final double PRED_STEP_S = 0.02;
+
+    private final double[] pred = new double[6];
+    private Sample holdFrom; // the snapshot the cached hold pose was predicted from (reset when the buffer changes)
+    private final double[] holdPred = new double[6];
+    private final float[] holdQ = new float[4];
+
+    /**
+     * Dead reckoning from snapshot s[ia] for exMs: the car keeps its speed and turn rate (the rate
+     * fades after TURN_HOLD_S), its last acceleration fades out, and past maxPredictMs it coasts to a
+     * stop over STOP_TAIL_MS. Writes position and world velocity to pred[], the rotation (the last
+     * one turned by the predicted yaw; pitch and roll stay) to q1.
+     */
+    private void predict(int ia, double exMs) {
+        Sample a = s[ia];
+        double vx0 = a.vx, vy0 = a.vz; // world-space horizontal velocity
+        double speed = Math.sqrt(vx0 * vx0 + vy0 * vy0);
+        q1[0] = a.qx; q1[1] = a.qy; q1[2] = a.qz; q1[3] = a.qw;
+        normalize(q1);
+        double hBody = heading(q1);
+        double hVel = speed > 0.5 ? Math.atan2(vy0, vx0) : hBody;
+        double wVel = 0.0, wBody = 0.0, acc = 0.0;
+        Sample p = null;
+        for (int j = ia - 1; j >= 0; j--) {
+            long d = a.t - s[j].t;
+            if (d > 600L) break;
+            p = s[j];
+            if (d >= 90L) break; // rates over ~0.1 s: steadier than adjacent 33 ms snapshots
+        }
+        if (p != null && a.t - p.t >= 5L) {
+            double dtp = (a.t - p.t) / 1000.0;
+            q2[0] = p.qx; q2[1] = p.qy; q2[2] = p.qz; q2[3] = p.qw;
+            normalize(q2);
+            wBody = wrap(hBody - heading(q2)) / dtp;
+            double pvx = p.vx, pvy = p.vz;
+            double ps = Math.sqrt(pvx * pvx + pvy * pvy);
+            wVel = speed > 2.0 && ps > 2.0 ? wrap(hVel - Math.atan2(pvy, pvx)) / dtp : wBody;
+            acc = speed > 1.0 ? (speed - ps) / dtp : 0.0;
+        }
+        wBody = clamp(wBody, -MAX_TURN_RATE, MAX_TURN_RATE);
+        wVel = clamp(wVel, -MAX_TURN_RATE, MAX_TURN_RATE);
+        acc = clamp(acc, -MAX_ACC, MAX_ACC);
+
+        double tEnd = exMs / 1000.0;
+        double limit = Config.maxPredictMs / 1000.0;
+        double x = 0.0, y = 0.0, tau = 0.0;
+        while (tau < tEnd) {
+            double h = Math.min(PRED_STEP_S, tEnd - tau);
+            double m = tau + 0.5 * h;
+            double hd = hVel + turn(wVel, m);
+            double v = speedAt(speed, acc, m, limit);
+            x += v * Math.cos(hd) * h;
+            y += v * Math.sin(hd) * h;
+            tau += h;
+        }
+        double vEnd = speedAt(speed, acc, tEnd, limit);
+        double hdEnd = hVel + turn(wVel, tEnd);
+        pred[0] = a.x + x;
+        pred[1] = a.y + y;
+        double rise = a.vy * tEnd;
+        boolean capped = rise > 0.3 || rise < -0.3;
+        pred[2] = a.z + clamp(rise, -0.3, 0.3);
+        pred[3] = vEnd * Math.cos(hdEnd);
+        pred[4] = vEnd * Math.sin(hdEnd);
+        pred[5] = capped || tEnd > limit ? 0.0 : a.vy;
+
+        double yaw = turn(wBody, tEnd);
+        if (Math.abs(yaw) > 1.0e-5) {
+            // heading grows opposite to the rotation about Bullet's up axis (y)
+            q2[0] = 0f; q2[1] = (float) Math.sin(-yaw * 0.5); q2[2] = 0f; q2[3] = (float) Math.cos(-yaw * 0.5);
+            mul(q2, q1, q1);
+            normalize(q1);
+        }
+    }
+
+    /** heading change after t seconds at turn rate w: held for TURN_HOLD_S, then fading */
+    static double turn(double w, double t) {
+        double a;
+        if (t <= TURN_HOLD_S) {
+            a = w * t;
+        } else {
+            a = w * (TURN_HOLD_S + TURN_FADE_S * (1.0 - Math.exp(-(t - TURN_HOLD_S) / TURN_FADE_S)));
+        }
+        return clamp(a, -MAX_TURN, MAX_TURN);
+    }
+
+    /** predicted speed after t seconds: the acceleration fades, past the limit the car coasts to a stop */
+    static double speedAt(double v0, double acc, double t, double limit) {
+        double v = v0 + acc * ACC_FADE_S * (1.0 - Math.exp(-t / ACC_FADE_S));
+        if (v < 0.0) v = 0.0;
+        if (t > limit) v *= Math.exp(-(t - limit) / (STOP_TAIL_MS / 4000.0));
+        return v;
+    }
+
+    /** world heading (radians, atan2 in world x/y) of a body rotation; the car's forward is local +z */
+    static double heading(float[] q) {
+        double fx = 2.0 * (q[0] * q[2] + q[3] * q[1]);
+        double fz = 1.0 - 2.0 * (q[0] * q[0] + q[1] * q[1]);
+        return Math.atan2(fz, fx);
+    }
+
+    static double wrap(double a) {
+        while (a > Math.PI) a -= 2 * Math.PI;
+        while (a < -Math.PI) a += 2 * Math.PI;
+        return a;
+    }
+
+    static double clamp(double v, double lo, double hi) {
+        return v < lo ? lo : (v > hi ? hi : v);
+    }
+
     private final float[] springOut = new float[2];
 
     /** Exact step of x'' = -2w x' - w^2 x. */
@@ -549,7 +730,8 @@ final class Track {
 
     void resetStats(long now) {
         stFrames = stInterp = stExtrap = stHold = stCorr = stSnap = stSamples = stTeleport = stDropped = stIdle = 0;
-        stMaxCorr = stSumDelay = stMaxDelay = 0.0;
+        stGaps = stStale = stLongGaps = 0;
+        stMaxCorr = stSumDelay = stMaxDelay = stGapMax = stPredMax = 0.0;
         stStart = now;
     }
 

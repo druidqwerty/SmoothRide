@@ -53,6 +53,8 @@ public final class Engine {
 
     private static final Quaternionf tmpQ = new Quaternionf();
 
+    static final String VERSION = "1.1.0";
+
     private Engine() {
     }
 
@@ -65,7 +67,8 @@ public final class Engine {
         } catch (Throwable t) {
             status = "config error: " + t;
         }
-        log("loaded. " + status);
+        Config.snapshotStartup();
+        log("loaded " + VERSION + ". " + status);
         log("settings: " + Config.describe());
     }
 
@@ -236,7 +239,7 @@ public final class Engine {
                 tracks.put(interp, tr);
             }
             boolean echo = serverUpdateDepth > 0 && isRemoteDriven(vehicle) && tr != null && !Double.isNaN(tr.lastArrive)
-                    && now - tr.lastArrive < 1000.0;
+                    && now - tr.lastArrive < Track.bridgeMs();
             if (Trace.on()) {
                 VehicleInterpolationData d = (VehicleInterpolationData) data;
                 Trace.end(Trace.begin('P', now).append(',').append(vehicle.vehicleId).append(',').append((long) dTime.get(d))
@@ -509,11 +512,11 @@ public final class Engine {
             int f = Math.max(1, t.stFrames);
             log(String.format(Locale.ROOT,
                     "vid %d: %d samples, gap %.0f ms, latency p50/p90 %.0f/%.0f ms, delay avg %.0f max %.0f ms, "
-                            + "frames %d (interp %.1f%%, predict %.1f%%, hold %.1f%%), corrections %d (max %.2f m), snaps %d, teleports %d, idle %d",
+                            + "frames %d (interp %.1f%%, predict %.1f%%, hold %.1f%%), corrections %d (max %.2f m), snaps %d, teleports %d, idle %d, gaps %d (max %.0f ms, predicted up to %.0f ms, %d beyond prediction), late backlog %d",
                     (int) t.vehicleId, t.stSamples, t.sendGap(), t.latencyP(0.5), t.latencyP(0.9),
                     t.stSumDelay / f, t.stMaxDelay, t.stFrames,
                     100.0 * t.stInterp / f, 100.0 * t.stExtrap / f, 100.0 * t.stHold / f,
-                    t.stCorr, t.stMaxCorr, t.stSnap, t.stTeleport, t.stIdle));
+                    t.stCorr, t.stMaxCorr, t.stSnap, t.stTeleport, t.stIdle, t.stGaps, t.stGapMax, t.stPredMax, t.stLongGaps, t.stStale));
             t.resetStats(ms);
         }
     }

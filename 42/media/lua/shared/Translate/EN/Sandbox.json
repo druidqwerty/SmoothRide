@@ -1,0 +1,14 @@
+{
+    "Sandbox_SmoothRide": "SmoothRide",
+    "Sandbox_SmoothRide_Enabled": "Enable SmoothRide",
+    "Sandbox_SmoothRide_Enabled_tooltip": "Off: every player sees other players' cars with vanilla sync. Applies at once, also when an admin changes it in a running game.",
+    "Sandbox_SmoothRide_Mode": "Smoothness mode",
+    "Sandbox_SmoothRide_Mode_tooltip": "Same for every player. Balanced: other cars are drawn about 80 ms behind. Smooth: even smoother for about 40 ms more (120 ms, still 4x less than vanilla's 500). Realtime: the lowest delay, more prediction; cars may get corrected on sharp manoeuvres.",
+    "Sandbox_SmoothRide_Mode_option1": "Balanced",
+    "Sandbox_SmoothRide_Mode_option2": "Smooth",
+    "Sandbox_SmoothRide_Mode_option3": "Realtime",
+    "Sandbox_SmoothRide_SendIntervalMs": "Driver send interval, ms",
+    "Sandbox_SmoothRide_SendIntervalMs_tooltip": "How often a driver sends their car's state: 33 = 30 times a second, 150 = vanilla (no boost). Same for every player.",
+    "Sandbox_SmoothRide_MaxPredictMs": "Bridge server hitches up to, ms",
+    "Sandbox_SmoothRide_MaxPredictMs_tooltip": "When the server stalls (world save, loading new map areas) no car updates come through. A moving car keeps going on prediction this long instead of freezing, then slows to a stop. 2500 covers the hitches of a big modded co-op host."
+}

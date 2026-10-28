@@ -1,0 +1,7 @@
+{
+    "UI_SR_Info": "Your personal settings (stats in console.txt). Everything that must be the same for all players (on/off, mode, send rate, hitch bridging) is in the host's sandbox options, page SmoothRide; an admin can change it in a running game (Admin > Sandbox options).",
+    "UI_SR_NotLoaded": "The Java part of SmoothRide is not loaded (see ZombieBuddy); these settings take effect once it is.",
+    "UI_SR_LogStats": "Write stats to console.txt",
+    "UI_SR_LogStats_tt": "[SmoothRide] vid N: ... delay avg ... lines, one per remote car.",
+    "UI_SR_StatsInterval": "Stats interval, seconds"
+}

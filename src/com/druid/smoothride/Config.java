@@ -26,12 +26,16 @@ final class Config {
     static volatile double delayShrinkRate = 0.06; // max ms of delay lost per ms (remote car runs 6% fast)
     static volatile double delayRateAccel = 0.3;   // how fast that rate itself may change, per second
 
-    static volatile double maxExtrapolationMs = 250.0;
-    static volatile double idleTimeoutMs = 1500.0; // no packets for this long -> hand back to vanilla
+    // no new packets (a server hitch: world save, chunk loading): a moving car keeps going on
+    // prediction this long, then coasts to a stop (1.0: maxExtrapolationMs=250, then it froze)
+    static volatile double maxPredictMs = 2500.0;
+    static volatile double idleTimeoutMs = 1500.0; // no packets for this long (and prediction over) -> vanilla
     static volatile double correctionTimeMs = 120.0;
     static volatile double jumpThreshold = 0.06;   // m; smaller differences are treated as motion
     static volatile double rotJumpDeg = 1.5;
-    static volatile double snapDistance = 8.0;     // m; larger errors snap instead of blending
+    static volatile double snapDistance = 50.0;    // m; larger errors snap instead of blending (1.0: 8)
+    static volatile double blendSpeedFrac = 0.35;  // a big correction moves at most this share of the car's speed...
+    static volatile double blendSpeedMin = 2.0;    // ...plus this many m/s
     static volatile double teleportDistance = 30.0;
     static volatile double hermiteMaxDeviation = 0.6;
 
@@ -69,7 +73,8 @@ final class Config {
     static String describe() {
         return "enabled=" + enabled + " sendBoost=" + sendBoost + " sendIntervalMs=" + sendIntervalMs
                 + " mode=" + mode + " minDelayMs=" + minDelayMs + " maxDelayMs=" + maxDelayMs
-                + " maxExtrapolationMs=" + maxExtrapolationMs + " correctionTimeMs=" + correctionTimeMs + " trace=" + trace;
+                + " maxPredictMs=" + maxPredictMs + " snapDistance=" + snapDistance + " correctionTimeMs=" + correctionTimeMs
+                + " trace=" + trace;
     }
 
     static boolean set(String key, String value) {
@@ -86,10 +91,14 @@ final class Config {
                 case "minDelayMs": minDelayMs = clampD(Double.parseDouble(value), 0, 500); return true;
                 case "maxDelayMs": maxDelayMs = clampD(Double.parseDouble(value), 100, 2000); return true;
                 case "initialDelayMs": initialDelayMs = clampD(Double.parseDouble(value), 0, 1000); return true;
-                case "maxExtrapolationMs": maxExtrapolationMs = clampD(Double.parseDouble(value), 0, 600); return true;
+                case "maxPredictMs":
+                case "maxExtrapolationMs": // 1.0 name
+                    maxPredictMs = clampD(Double.parseDouble(value), 250, 5000); return true;
                 case "idleTimeoutMs": idleTimeoutMs = clampD(Double.parseDouble(value), 300, 10000); return true;
                 case "correctionTimeMs": correctionTimeMs = clampD(Double.parseDouble(value), 10, 1000); return true;
-                case "snapDistance": snapDistance = clampD(Double.parseDouble(value), 1, 50); return true;
+                case "snapDistance": snapDistance = clampD(Double.parseDouble(value), 2, 100); return true;
+                case "blendSpeedFrac": blendSpeedFrac = clampD(Double.parseDouble(value), 0.05, 2); return true;
+                case "blendSpeedMin": blendSpeedMin = clampD(Double.parseDouble(value), 0.2, 20); return true;
                 case "logStats": logStats = Boolean.parseBoolean(value); return true;
                 case "statsIntervalSec": statsIntervalSec = clampI(Integer.parseInt(value.trim()), 5, 600); return true;
                 case "trace": trace = Boolean.parseBoolean(value.trim()); return true;
@@ -102,10 +111,19 @@ final class Config {
 
     private static final String[] KEYS = {
         "enabled", "sendBoost", "sendIntervalMs", "mode", "minDelayMs", "maxDelayMs", "initialDelayMs",
-        "maxExtrapolationMs", "idleTimeoutMs", "correctionTimeMs", "snapDistance", "logStats", "statsIntervalSec", "trace"
+        "maxPredictMs", "idleTimeoutMs", "correctionTimeMs", "snapDistance", "blendSpeedFrac", "blendSpeedMin",
+        "logStats", "statsIntervalSec", "trace"
     };
 
-    private static String get(String key) {
+    private static final java.util.Map<String, String> startup = new java.util.HashMap<>();
+
+    /** Remembers the values from the file / built-in defaults (Lua reads them as "startup.<key>"). */
+    static void snapshotStartup() {
+        for (String key : KEYS) startup.put(key, get(key));
+    }
+
+    static String get(String key) {
+        if (key.startsWith("startup.")) return startup.get(key.substring(8));
         switch (key) {
             case "enabled": return String.valueOf(enabled);
             case "sendBoost": return String.valueOf(sendBoost);
@@ -114,10 +132,13 @@ final class Config {
             case "minDelayMs": return String.valueOf(minDelayMs);
             case "maxDelayMs": return String.valueOf(maxDelayMs);
             case "initialDelayMs": return String.valueOf(initialDelayMs);
-            case "maxExtrapolationMs": return String.valueOf(maxExtrapolationMs);
+            case "maxPredictMs":
+            case "maxExtrapolationMs": return String.valueOf(maxPredictMs);
             case "idleTimeoutMs": return String.valueOf(idleTimeoutMs);
             case "correctionTimeMs": return String.valueOf(correctionTimeMs);
             case "snapDistance": return String.valueOf(snapDistance);
+            case "blendSpeedFrac": return String.valueOf(blendSpeedFrac);
+            case "blendSpeedMin": return String.valueOf(blendSpeedMin);
             case "logStats": return String.valueOf(logStats);
             case "statsIntervalSec": return String.valueOf(statsIntervalSec);
             case "trace": return String.valueOf(trace);
@@ -136,18 +157,51 @@ final class Config {
             }
             int applied = 0;
             StringBuilder bad = new StringBuilder();
+            // 1.0 wrote every key with its default; values still at a 1.0 default whose default changed
+            // in 1.1 are dropped, so the file does not pin the old behaviour (customised values stay)
+            boolean v1 = !p.containsKey("configVersion");
+            int upgraded = 0;
             for (String key : p.stringPropertyNames()) {
+                if (key.equals("configVersion")) continue;
+                if (v1 && isOldDefault(key, p.getProperty(key))) {
+                    upgraded++;
+                    continue;
+                }
                 if (set(key, p.getProperty(key))) {
                     applied++;
                 } else {
                     bad.append(' ').append(key);
                 }
             }
-            return "config " + file + ": " + applied + " value(s)" + (bad.length() > 0 ? ", ignored:" + bad : "");
+            String status = "config " + file + ": " + applied + " value(s)" + (bad.length() > 0 ? ", ignored:" + bad : "");
+            if (v1) status += "; " + write(file, "upgraded from 1.0 (" + upgraded + " old default(s) replaced)");
+            return status;
         }
+        return write(file, "created with defaults");
+    }
+
+    private static boolean isOldDefault(String key, String value) {
+        try {
+            double v = Double.parseDouble(value.trim());
+            switch (key) {
+                case "maxExtrapolationMs": return v == 250.0;
+                case "snapDistance": return v == 8.0;
+                default: return false;
+            }
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    private static String write(File file, String what) {
         StringBuilder sb = new StringBuilder();
-        sb.append("# SmoothRide MP settings. Delete this file to restore defaults.\n");
-        sb.append("# mode: smooth (max smoothness, ~+40 ms), balanced (default), realtime (min delay, more prediction)\n");
+        sb.append("# SmoothRide MP settings. Delete this file to restore defaults. Read once, when the game starts.\n");
+        sb.append("# Normally nothing here needs editing: on a server, enabled, mode, sendIntervalMs and maxPredictMs come from the\n");
+        sb.append("# host's sandbox options (page SmoothRide, an admin can change them in a running game) and win over this file;\n");
+        sb.append("# logStats and statsIntervalSec are in the game's Options > Mods and win over this file. The rest is for tuning.\n");
+        sb.append("# mode: balanced (default: remote cars ~80 ms behind), smooth (~40 ms more), realtime (lowest delay, more prediction)\n");
+        sb.append("# maxPredictMs: no packets (server hitch) -> a moving car keeps going this long, then coasts to a stop\n");
+        sb.append("configVersion=2\n");
         for (String key : KEYS) {
             sb.append(key).append('=').append(get(key)).append('\n');
         }
@@ -157,7 +211,7 @@ final class Config {
             try (OutputStream out = new FileOutputStream(file)) {
                 out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
             }
-            return "config created with defaults: " + file;
+            return "config " + what + ": " + file;
         } catch (Exception e) {
             return "config not written (" + e + "), using defaults";
         }

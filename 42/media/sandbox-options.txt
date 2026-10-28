@@ -1,0 +1,43 @@
+VERSION = 1,
+
+option SmoothRide.Enabled
+{
+	type = boolean,
+	default = true,
+
+	page = SmoothRide,
+	translation = SmoothRide_Enabled,
+}
+
+option SmoothRide.Mode
+{
+	type = enum,
+	numValues = 3,
+	default = 1,
+
+	page = SmoothRide,
+	translation = SmoothRide_Mode,
+	valueTranslation = SmoothRide_Mode,
+}
+
+option SmoothRide.SendIntervalMs
+{
+	type = integer,
+	min = 16,
+	max = 150,
+	default = 33,
+
+	page = SmoothRide,
+	translation = SmoothRide_SendIntervalMs,
+}
+
+option SmoothRide.MaxPredictMs
+{
+	type = integer,
+	min = 250,
+	max = 5000,
+	default = 2500,
+
+	page = SmoothRide,
+	translation = SmoothRide_MaxPredictMs,
+}

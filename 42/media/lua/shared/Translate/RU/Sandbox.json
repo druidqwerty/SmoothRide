@@ -1,0 +1,14 @@
+{
+    "Sandbox_SmoothRide": "SmoothRide",
+    "Sandbox_SmoothRide_Enabled": "Включить SmoothRide",
+    "Sandbox_SmoothRide_Enabled_tooltip": "Выкл.: все игроки видят чужие машины с ванильной синхронизацией. Применяется сразу, в том числе если админ меняет это в идущей игре.",
+    "Sandbox_SmoothRide_Mode": "Режим плавности",
+    "Sandbox_SmoothRide_Mode_tooltip": "Одинаков для всех игроков. Balanced: чужие машины отстают примерно на 80 мс. Smooth: ещё плавнее ценой около 40 мс (120 мс, всё равно в 4 раза меньше ванильных 500). Realtime: минимальное отставание, больше предсказания; на резких манёврах машину может поправлять.",
+    "Sandbox_SmoothRide_Mode_option1": "Balanced",
+    "Sandbox_SmoothRide_Mode_option2": "Smooth",
+    "Sandbox_SmoothRide_Mode_option3": "Realtime",
+    "Sandbox_SmoothRide_SendIntervalMs": "Интервал отправки водителем, мс",
+    "Sandbox_SmoothRide_SendIntervalMs_tooltip": "Как часто водитель отправляет состояние машины: 33 = 30 раз в секунду, 150 = как в ванилле (без ускорения). Одинаково для всех игроков.",
+    "Sandbox_SmoothRide_MaxPredictMs": "Сглаживать подвисания сервера до, мс",
+    "Sandbox_SmoothRide_MaxPredictMs_tooltip": "Когда сервер подвисает (сохранение мира, подгрузка новых участков карты), обновления машин не приходят. Едущая машина это время продолжает движение по прогнозу, а не замирает, затем плавно останавливается. 2500 покрывает подвисания большого кооп-сервера с модами."
+}

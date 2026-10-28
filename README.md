@@ -105,6 +105,7 @@ The script builds `build/SmoothRide.jar`, assembles the mod folder in `dist/Smoo
 - **SmoothRide MP** — smooth multiplayer vehicles (this mod).
 - [ZombieSync MP](https://steamcommunity.com/sharedfiles/filedetails/?id=3827946115) — smooth multiplayer zombies.
 - [Tripping Zombies MP Fix](https://steamcommunity.com/sharedfiles/filedetails/?id=3829034899) — the same Tripping Zombies trips for every player.
+- [Wandering Hordes Save Trim](https://steamcommunity.com/sharedfiles/filedetails/?id=3829140377) — no more save freezes from Wandering Hordes' wall map.
 
 ## License
 MIT License — see LICENSE file.

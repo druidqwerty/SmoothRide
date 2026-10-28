@@ -65,6 +65,9 @@ SmoothRide MP 1.1.0: плавные машины в мультиплеере Pro
   https://steamcommunity.com/sharedfiles/filedetails/?id=3827946115
 - Tripping Zombies MP Fix: одинаковые падения Tripping Zombies у всех игроков.
   https://steamcommunity.com/sharedfiles/filedetails/?id=3829034899
+- Wandering Hordes Save Trim: без подвисаний сервера при сохранении из-за карты стен
+  Wandering Hordes.
+  https://steamcommunity.com/sharedfiles/filedetails/?id=3829140377
 
 Важно
 - Код написан нейросетью, не человеком.

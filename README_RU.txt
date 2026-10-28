@@ -63,6 +63,8 @@ SmoothRide MP 1.1.0: плавные машины в мультиплеере Pro
 - SmoothRide MP: плавные машины в мультиплеере (этот мод).
 - ZombieSync MP: плавные зомби в мультиплеере.
   https://steamcommunity.com/sharedfiles/filedetails/?id=3827946115
+- Tripping Zombies MP Fix: одинаковые падения Tripping Zombies у всех игроков.
+  https://steamcommunity.com/sharedfiles/filedetails/?id=3829034899
 
 Важно
 - Код написан нейросетью, не человеком.

@@ -4,6 +4,8 @@
 
 **Smooth multiplayer vehicles for Project Zomboid (Build 42.21+)**
 
+**Steam Workshop:** https://steamcommunity.com/sharedfiles/filedetails/?id=3827367565 · **Source code (MIT):** https://github.com/druidqwerty/SmoothRide
+
 Remote vehicles are drawn with ~60-100 ms delay instead of 500+ ms. They follow smooth curves based on the driver's speed instead of straight-line segments and never pop in. Prediction errors are blended smoothly.
 
 Server hitches (world save, loading new map areas on a big modded host) no longer freeze cars for a second and then teleport them: the car keeps going on prediction (up to 2.5 s) and glides back onto its true path when data resumes.
@@ -12,7 +14,7 @@ The driver sends car state ~30 times per second instead of ~6. Client-side Java 
 
 <p align="center"><a href="https://boosty.to/lrgpp"><img src="docs/banner.png" alt="LrgPP mods on Boosty" width="640"></a></p>
 
-Free and open source. Almost all of the code is written by an AI; the subscription, the testing and the time are mine. If the mod made your game better: [support on Boosty](https://boosty.to/lrgpp).
+Free and open source. The code is written by an AI; the direction, the testing and the time are mine. If the mod made your game better: [support on Boosty](https://boosty.to/lrgpp).
 
 ## Features
 - Low-latency remote vehicle rendering (~60-100 ms instead of 500+ ms)
@@ -24,14 +26,17 @@ Free and open source. Almost all of the code is written by an AI; the subscripti
 - Host settings in the sandbox options (page SmoothRide), changeable in a running game
 
 ## Installation
-**Required on every client and in server mod list.**
+**Required on every client and in the server mod list.**
 
+Steam Workshop: subscribe to [ZombieBuddy](https://steamcommunity.com/sharedfiles/filedetails/?id=3619862853) (2.3.4+, install it as described on its page) and [SmoothRide MP](https://steamcommunity.com/sharedfiles/filedetails/?id=3827367565). On the server add `SmoothRide` to `Mods=` (after ZombieBuddy) and `3827367565` to `WorkshopItems=`.
+
+Manual install:
 1. Install **ZombieBuddy** 2.3.4+ (if you use BetterVehicleDynamics, RealVehicleInteriors etc. you probably already have it).
 2. Download `SmoothRide_1.1.0.zip` from [Releases](https://github.com/druidqwerty/SmoothRide/releases) and unpack the `SmoothRide` folder into your mods directory:
    - `%UserProfile%\Zomboid\mods\SmoothRide\`
    - You should see `... \mods\SmoothRide\42\mod.info` and `... \42\media\java\SmoothRide.jar`
 3. On first connection, ZombieBuddy will prompt for Java mod permission for SmoothRide — allow it.
-4. Add `SmoothRide` to your server's `Mods=` list in `Server\YourServer.ini`.
+4. Add `SmoothRide` to your server's `Mods=` list (after ZombieBuddy) in `Server\YourServer.ini`.
 
 ## Configuration
 **Server-wide (same for every player): the host's sandbox options, page SmoothRide.**
@@ -88,7 +93,7 @@ Server hitches (highway loop at 90 km/h, 16 injected server stalls of 0.3-2 s ea
 | largest error | 41 m | 45 m | 2.2 m |
 
 ## Please note
-- This mod was made 100% with AI.
+- The code is written by an AI, not by a human.
 - It was made only for playing with a friend.
 - Live-tested on a local dedicated server. The 1.1.0 hitch fix comes from the logs of a server hosted from the game menu, and the host's settings page was checked there; a full session with a friend on such a server with 1.1.0 is still to come.
 

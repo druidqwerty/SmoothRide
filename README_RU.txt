@@ -68,7 +68,7 @@ SmoothRide MP 1.1.0: плавные машины в мультиплеере Pro
 - Wandering Hordes Performance Fix: без подвисаний сохранения и лагов клиента
   из-за Wandering Hordes.
   https://steamcommunity.com/sharedfiles/filedetails/?id=3829140377
-- Download Unstuck: лечит и ускоряет загрузку мастерской при запуске своего сервера.
+- Download Unstuck: лечит зависание загрузки мастерской при запуске своего сервера.
   https://steamcommunity.com/sharedfiles/filedetails/?id=3829163351
 
 Важно

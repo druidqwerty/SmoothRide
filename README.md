@@ -107,6 +107,7 @@ The script builds `build/SmoothRide.jar`, assembles the mod folder in `dist/Smoo
 - [Tripping Zombies MP Fix](https://steamcommunity.com/sharedfiles/filedetails/?id=3829034899) — the same Tripping Zombies trips for every player.
 - [Wandering Hordes Performance Fix](https://steamcommunity.com/sharedfiles/filedetails/?id=3829140377) — no save freezes and no client lag from Wandering Hordes.
 - [Download Unstuck](https://steamcommunity.com/sharedfiles/filedetails/?id=3829163351) — un-sticks the Workshop download when hosting from the menu.
+- [A-Life: Reactive Survivors](https://steamcommunity.com/sharedfiles/filedetails/?id=3829332775) — A-Life NPCs fight back before the bite (test version).
 
 ## License
 MIT License — see LICENSE file.

@@ -70,6 +70,8 @@ SmoothRide MP 1.1.0: плавные машины в мультиплеере Pro
   https://steamcommunity.com/sharedfiles/filedetails/?id=3829140377
 - Download Unstuck: лечит зависание загрузки мастерской при запуске своего сервера.
   https://steamcommunity.com/sharedfiles/filedetails/?id=3829163351
+- A-Life: Reactive Survivors: NPC из A-Life отбиваются до укуса (тестовая версия).
+  https://steamcommunity.com/sharedfiles/filedetails/?id=3829332775
 
 Важно
 - Код написан нейросетью, не человеком.

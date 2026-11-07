@@ -12,7 +12,7 @@ Server hitches (world save, loading new map areas on a big modded host) no longe
 
 The driver sends car state ~30 times per second instead of ~6. Client-side Java mod (requires ZombieBuddy). Every player must have it. If the game build does not match, it disables itself and falls back to vanilla sync.
 
-<p align="center"><a href="https://boosty.to/lrgpp"><img src="docs/banner.png" alt="LrgPP mods on Boosty" width="640"></a></p>
+<p align="center"><a href="https://boosty.to/lrgpp"><img src="https://raw.githubusercontent.com/druidqwerty/SmoothRide/83ca54dfb5cbec3fd580303775a2e6dcd0333104/docs/banner.png" alt="LrgPP mods on Boosty" width="640"></a></p>
 
 Free and open source. The code is written by an AI; the direction, the testing and the time are mine. If the mod made your game better: [support on Boosty](https://boosty.to/lrgpp).
 

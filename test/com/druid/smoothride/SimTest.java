@@ -290,6 +290,52 @@ public final class SimTest {
                 Config.mode = "balanced";
             }
         }
+        verifyRegressions();
+    }
+
+    static void verifyRegressions() {
+        // 1) Track.clear() must reset silence/clock state so idle/handoff/removeFromWorld does not log bogus multi-minute gaps
+        Track tr = new Track();
+        for (int i = 0; i < 6; i++) {
+            Sample s = snap(100 + i * 3, 1000L + i * 33L);
+            tr.beginAdd(s);
+            tr.add(s, 1040.0 + i * 33.0);
+        }
+        float[] b1 = new float[27], b2 = new float[2];
+        if (tr.get(1200.0, Double.NaN, b1, b2) != Track.OK) throw new AssertionError("expected OK before clear");
+        tr.clear();
+        if (!Double.isNaN(tr.lastArrive) || !Double.isNaN(tr.lastNow)) {
+            throw new AssertionError("clear() left stale lastArrive/lastNow");
+        }
+        Sample after = snap(200, 31000L);
+        tr.beginAdd(after);
+        tr.add(after, 31040.0);
+        if (tr.stGaps != 0 || tr.stGapMax != 0.0 || tr.stStale != 0) {
+            throw new AssertionError("clear() leaked silence stats: gaps=" + tr.stGaps + " max=" + tr.stGapMax + " stale=" + tr.stStale);
+        }
+
+        // 2) Once idle=true, raising Config.maxPredictMs live must not pull an idle vehicle back out of vanilla control
+        Track tr2 = new Track();
+        for (int i = 0; i < 4; i++) {
+            Sample s = snap(0, 1000L + i * 33L);
+            tr2.beginAdd(s);
+            tr2.add(s, 1040.0 + i * 33.0);
+        }
+        double savedMaxPredict = Config.maxPredictMs;
+        try {
+            Config.maxPredictMs = 2500.0;
+            if (tr2.get(1200.0, Double.NaN, b1, b2) != Track.OK) throw new AssertionError("expected OK while active");
+            if (tr2.get(4500.0, Double.NaN, b1, b2) != Track.NONE || !tr2.idle) {
+                throw new AssertionError("expected parked vehicle to enter idle");
+            }
+            Config.maxPredictMs = 5000.0;
+            if (tr2.get(4600.0, Double.NaN, b1, b2) != Track.NONE || !tr2.idle) {
+                throw new AssertionError("idle vehicle woke up when maxPredictMs increased");
+            }
+        } finally {
+            Config.maxPredictMs = savedMaxPredict;
+        }
+        System.out.println("SIM REGRESSION CHECKS PASSED");
     }
 
     static void print(String link, Result r) {

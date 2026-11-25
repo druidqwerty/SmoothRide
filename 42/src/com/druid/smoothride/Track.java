@@ -110,6 +110,12 @@ final class Track {
         mMode = -1;
         zeroCorrection();
         renderTime = Double.NaN;
+        lastNow = Double.NaN;
+        lastArrive = Double.NaN;
+        lastGetNow = Double.NaN;
+        lastGetOk = false;
+        burstUntil = Double.NEGATIVE_INFINITY;
+        burstRef = 0.0;
         idle = false;
     }
 
@@ -313,7 +319,7 @@ final class Track {
      * @param b2 [engineSpeed, throttle]
      */
     int get(double now, double towRender, float[] b1, float[] b2) {
-        if (n == 0) return NONE;
+        if (n == 0 || idle) return NONE;
         if (stStart < 0) stStart = (long) now;
 
         double dtFrame = Double.isNaN(lastNow) ? 0.0 : now - lastNow;

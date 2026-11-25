@@ -53,7 +53,7 @@ public final class Engine {
 
     private static final Quaternionf tmpQ = new Quaternionf();
 
-    static final String VERSION = "1.1.0";
+    static final String VERSION = "1.1.1";
 
     private Engine() {
     }
@@ -204,6 +204,9 @@ public final class Engine {
         try {
             if (!ensureReflection()) return;
             if (!selfTestDone) runSelfTest();
+            if (!Config.enabled && !tracks.isEmpty()) {
+                for (Track tr : tracks.values()) tr.clear();
+            }
             frameNanos = System.nanoTime();
             frameNow = GameTime.getServerTimeShiftIsSet() ? serverNowMs() : Double.NaN;
             if (Config.logStats) {

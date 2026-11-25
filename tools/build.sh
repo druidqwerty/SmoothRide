@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 JDK="${JDK:-C:/Users/druid/.openclaw/workspace/_ext/jdk/jdk-25.0.4.1+1/bin}"
 GAME="${GAME:-G:/Steam/steamapps/common/ProjectZomboid}"
 CP="$GAME/projectzomboid.jar;$GAME/ZombieBuddy.jar"
-MODVER="${MODVER:-1.1.0}"
+MODVER="${MODVER:-1.1.1}"
 
 rm -rf build/classes build/sim
 mkdir -p build/classes build/sim

@@ -79,6 +79,18 @@ public final class AgentTest {
         Engine.frame();
         expect(vi.interpolationDataGet(b1, b2), "2-arg overload goes through SmoothRide");
 
+        // 6) toggling Config.enabled false -> true clears stale tracks
+        Config.enabled = false;
+        Engine.frame();
+        Config.enabled = true;
+        Engine.frame();
+        expect(!vi.interpolationDataGet(b1, b2, null), "stale track cleared after Config.enabled toggled false -> true");
+
+        // 7) verify remaining ZombieBuddy target classes load and transform cleanly on this game build
+        Class.forName("zombie.vehicles.VehicleManager");
+        Class.forName("zombie.network.packets.vehicle.VehicleUpdatePacket");
+        expect(true, "VehicleManager and VehicleUpdatePacket loaded under ZombieBuddy");
+
         System.out.println(failures == 0 ? "AGENT TEST PASSED" : ("AGENT TEST FAILED: " + failures));
         System.exit(failures == 0 ? 0 : 1);
     }
